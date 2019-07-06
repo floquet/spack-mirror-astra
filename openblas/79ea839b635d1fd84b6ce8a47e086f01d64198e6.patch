@@ -1,0 +1,64 @@
+From 79ea839b635d1fd84b6ce8a47e086f01d64198e6 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tiziano=20M=C3=BCller?= <tiziano.mueller@chem.uzh.ch>
+Date: Sat, 6 Oct 2018 14:10:02 +0200
+Subject: [PATCH] fix parallel build issues with APFS/HFS+/ext2/3 in
+ netlib-lapack
+
+The problem is that OpenBLAS sets the LAPACKE_LIB and the TMGLIB to the
+same object and uses the `ar` feature to update the archive file. If the
+underlying filesystem does not have sub-second timestamp resolution and
+the system is fast enough (or `ccache` is used), the timestamp of the
+builds which should be added to the previously generated archive is the
+same as the archive file itself and therefore `make` does not update the
+archive.
+
+Since OpenBLAS takes care to not run the different targets updating the
+archive in parallel, the easiest solution is to declare the respective
+targets `.PHONY`, forcing `make` to always update them.
+
+fixes #1682
+---
+ lapack-netlib/LAPACKE/src/Makefile    | 2 ++
+ lapack-netlib/SRC/Makefile            | 2 ++
+ lapack-netlib/TESTING/MATGEN/Makefile | 2 ++
+ 3 files changed, 6 insertions(+)
+
+diff --git a/lapack-netlib/LAPACKE/src/Makefile b/lapack-netlib/LAPACKE/src/Makefile
+index 44884d4a5..7672f9f73 100644
+--- a/lapack-netlib/LAPACKE/src/Makefile
++++ b/lapack-netlib/LAPACKE/src/Makefile
+@@ -2454,6 +2454,8 @@ endif
+ 
+ all: ../../$(LAPACKELIB)
+ 
++.PHONY: ../../$(LAPACKELIB)
++
+ ../../$(LAPACKELIB): $(OBJ_A) $(OBJ_B) $(DEPRECATED) $(EXTENDED) $(MATGEN)
+ 	$(ARCH) $(ARCHFLAGS) $@ $(OBJ_A)
+ 	$(ARCH) $(ARCHFLAGS) $@ $(OBJ_B)
+diff --git a/lapack-netlib/SRC/Makefile b/lapack-netlib/SRC/Makefile
+index 531cb51fc..87a8f51e4 100644
+--- a/lapack-netlib/SRC/Makefile
++++ b/lapack-netlib/SRC/Makefile
+@@ -552,6 +552,8 @@ endif
+ 
+ all: ../$(LAPACKLIB)
+ 
++.PHONY: ../$(LAPACKLIB)
++
+ ../$(LAPACKLIB): $(ALLOBJ) $(ALLXOBJ) $(DEPRECATED)
+ 	$(ARCH) $(ARCHFLAGS) $@ $(ALLOBJ) $(ALLXOBJ) $(DEPRECATED)
+ 	$(RANLIB) $@
+diff --git a/lapack-netlib/TESTING/MATGEN/Makefile b/lapack-netlib/TESTING/MATGEN/Makefile
+index e20004c2f..a1d784fa5 100644
+--- a/lapack-netlib/TESTING/MATGEN/Makefile
++++ b/lapack-netlib/TESTING/MATGEN/Makefile
+@@ -57,6 +57,8 @@ all: ../../$(TMGLIB)
+ ALLOBJ = $(SMATGEN) $(CMATGEN) $(SCATGEN) $(DMATGEN) $(ZMATGEN) \
+ 	$(DZATGEN)
+ 
++.PHONY: ../../$(TMGLIB)
++
+ ../../$(TMGLIB): $(ALLOBJ)
+ 	$(ARCH) $(ARCHFLAGS) $@ $^
+ 	$(RANLIB) $@

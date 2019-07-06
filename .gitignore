@@ -1,11 +1,2 @@
 .swp
 .DS*
-*.pyc
-*.gz
-~*
-*.aux
-.log
-*.nav
-*.snm
-*.toc
-*.upa
